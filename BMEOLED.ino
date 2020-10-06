@@ -33,10 +33,14 @@ void loop() {
     u8g2.setFont(u8g2_font_courR14_tf);
     u8g2.firstPage();
     do {
-      u8g2.setCursor(0, 20);
-      u8g2.print("Temperatur:");
-      u8g2.setCursor(32, 50);
+      u8g2.setCursor(0, 12);
+      u8g2.print("Environment");
+      u8g2.setCursor(0, 36);
       u8g2.print(bme.readTemperature());
+      u8g2.print("*C");
+      u8g2.setCursor(0, 60);
+      u8g2.print(bme.readHumidity());
+      u8g2.print("%");
 
       } while ( u8g2.nextPage() );
     delay(delayTime);
