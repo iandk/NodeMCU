@@ -8,29 +8,35 @@ ESP8266WiFiMulti wifiMulti;
 #define DEVICE "ESP8266"
 #endif
 
-#include "DHT.h"
-
-#define DHTPIN D2     // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-
-DHT dht(DHTPIN, DHTTYPE);
-
-
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
+
+unsigned long delayTime;
+Adafruit_BME280 bme; // I2C
+
+
+
+
+
+
+
 // WiFi AP SSID
-#define WIFI_SSID "************"
+#define WIFI_SSID "*******"
 // WiFi password
-#define WIFI_PASSWORD "************"
+#define WIFI_PASSWORD "*******"
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_URL "************"
+#define INFLUXDB_URL "*******"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "***********************"
+#define INFLUXDB_TOKEN "*******"
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "*************"
+#define INFLUXDB_ORG "*******"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "************"
+#define INFLUXDB_BUCKET "*******"
+
 
 // Set timezone string according to https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html
 // Examples:
@@ -39,6 +45,8 @@ DHT dht(DHTPIN, DHTTYPE);
 //  Japanesse: "JST-9"
 //  Central Europe: "CET-1CEST,M3.5.0,M10.5.0/3"
 #define TZ_INFO "CET-1CEST,M3.5.0,M10.5.0/3"
+
+
 
 // InfluxDB client instance with preconfigured InfluxCloud certificate
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
@@ -49,7 +57,12 @@ Point sensor("enviro");
 void setup() {
   Serial.begin(115200);
 
-  dht.begin();
+  bool status;
+  status = bme.begin(0x76);  
+  if (!status) {
+      Serial.println("Could not find a valid BME280 sensor, check wiring!");
+      while (1);
+  }
 
   // Setup wifi
   WiFi.mode(WIFI_STA);
@@ -63,7 +76,7 @@ void setup() {
   Serial.println();
 
   // Add tags
-  sensor.addTag("location", DEVICE);
+  sensor.addTag("location", "bedroom");
 
   // Accurate time is necessary for certificate validation and writing in batches
   // For the fastest time sync find NTP servers in your area: https://www.pool.ntp.org/zone/
@@ -85,9 +98,9 @@ void setup() {
 
 void loop() {
 
-  float h = dht.readHumidity();
+  float h = bme.readHumidity();
   // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
+  float t = bme.readTemperature();
 
 
   // Clear fields for reusing the point. Tags will remain untouched
@@ -95,12 +108,11 @@ void loop() {
 
   // Store measured value into point
   // Report RSSI of currently connected network
-  sensor.addField("temp", dht.readTemperature());
-  sensor.addField("humidity", dht.readHumidity());
+  sensor.addField("temp", t);
+  sensor.addField("humidity", h);
 
 
 
-  Serial.print(t);
 
   // Print what are we exactly writing
   Serial.print("Writing: ");
