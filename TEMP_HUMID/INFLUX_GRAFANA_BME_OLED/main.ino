@@ -13,10 +13,13 @@ ESP8266WiFiMulti wifiMulti;
 #include <Adafruit_BME280.h>
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
+#include <U8g2lib.h>
 
 
 unsigned long delayTime;
 Adafruit_BME280 bme; // I2C
+U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
 
 
 
@@ -25,17 +28,18 @@ Adafruit_BME280 bme; // I2C
 
 
 // WiFi AP SSID
-#define WIFI_SSID "*******"
+#define WIFI_SSID "*****"
 // WiFi password
-#define WIFI_PASSWORD "*******"
+#define WIFI_PASSWORD "*****"
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_URL "*******"
+#define INFLUXDB_URL "*****"
 // InfluxDB v2 server or cloud API authentication token (Use: InfluxDB UI -> Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "*******"
+#define INFLUXDB_TOKEN "*****"
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )
-#define INFLUXDB_ORG "*******"
+#define INFLUXDB_ORG "*****"
 // InfluxDB v2 bucket name (Use: InfluxDB UI ->  Data -> Buckets)
-#define INFLUXDB_BUCKET "*******"
+#define INFLUXDB_BUCKET "*****"
+
 
 
 // Set timezone string according to https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html
@@ -56,7 +60,9 @@ Point sensor("enviro");
 
 void setup() {
   Serial.begin(115200);
-
+  
+  u8g2.begin();
+  
   bool status;
   status = bme.begin(0x76);  
   if (!status) {
@@ -98,11 +104,36 @@ void setup() {
 
 void loop() {
 
+ 
+  displayData();
+  uploadData();
+
+
+  
+}
+
+void displayData() {
+    u8g2.setFont(u8g2_font_courR14_tf);
+    u8g2.firstPage();
+    do {
+      u8g2.setCursor(0, 12);
+      u8g2.print("Environment");
+      u8g2.setCursor(0, 36);
+      u8g2.print(bme.readTemperature());
+      u8g2.print("*C");
+      u8g2.setCursor(0, 60);
+      u8g2.print(bme.readHumidity());
+      u8g2.print("%");
+
+      } while ( u8g2.nextPage() );
+    delay(1000);
+}
+
+void uploadData() {
   float h = bme.readHumidity();
   // Read temperature as Celsius (the default)
   float t = bme.readTemperature();
-
-
+  
   // Clear fields for reusing the point. Tags will remain untouched
   sensor.clearFields();
 
@@ -110,9 +141,6 @@ void loop() {
   // Report RSSI of currently connected network
   sensor.addField("temp", t);
   sensor.addField("humidity", h);
-
-
-
 
   // Print what are we exactly writing
   Serial.print("Writing: ");
@@ -132,4 +160,5 @@ void loop() {
   //Wait 10s
   Serial.println("Wait 10s");
   delay(10000);
+  
 }
